@@ -40,21 +40,32 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers(HttpMethod.GET, "/services", "/services/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/quotes").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
+                        // Allow CORS preflight requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Admin-only for services
+                        // Public endpoints
+                        .requestMatchers(HttpMethod.GET, "/services").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/services/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/quotes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/quotes").permitAll()   // ✅ allow GET quotes
+
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/contact").permitAll() // ✅ allow GET contact
+
+                        // Admin-only endpoints
                         .requestMatchers(HttpMethod.POST, "/services/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/services/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/services/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/quotes/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/contact/**").hasRole("ADMIN")
+
 
                         // Everything else requires login
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())
-                .cors(Customizer.withDefaults()); // <-- important for frontend calls
+                .cors(Customizer.withDefaults()); // enable CORS support
 
         return http.build();
     }
@@ -62,13 +73,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("http://localhost:3000"); // React dev server
+        configuration.addAllowedOrigin("http://localhost:3000");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        configuration.setAllowCredentials(true); // ✅ Allow cookies, auth headers, etc.
+        return new UrlBasedCorsConfigurationSource() {{
+            registerCorsConfiguration("/**", configuration);
+        }};
     }
+
 
 }
