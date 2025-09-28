@@ -12,6 +12,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -37,21 +40,35 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // GET /services is public
-                        .requestMatchers(HttpMethod.GET, "/services").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/services/**").permitAll()
+                        // Public endpoints
+                        .requestMatchers(HttpMethod.GET, "/services", "/services/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/quotes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
 
-                        // POST/PUT/DELETE need ADMIN
+                        // Admin-only for services
                         .requestMatchers(HttpMethod.POST, "/services/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/services/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/services/**").hasRole("ADMIN")
 
-                        // everything else requires login
+                        // Everything else requires login
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults());
+                .httpBasic(Customizer.withDefaults())
+                .cors(Customizer.withDefaults()); // <-- important for frontend calls
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.addAllowedOrigin("http://localhost:3000"); // React dev server
+        configuration.addAllowedMethod("*");
+        configuration.addAllowedHeader("*");
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
 }
